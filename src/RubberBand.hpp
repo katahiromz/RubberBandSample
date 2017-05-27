@@ -165,7 +165,7 @@ struct RubberBand : public WindowBase
         return TRUE;
     }
 
-    void FitToTarget(HWND hwnd)
+    void FitToBand(HWND hwnd)
     {
         HWND hwndParent = GetParent(hwnd);
 
@@ -179,7 +179,7 @@ struct RubberBand : public WindowBase
             rc.right - rc.left, rc.bottom - rc.top, TRUE);
     }
 
-    void FitToBand(HWND hwnd)
+    void FitToTarget(HWND hwnd)
     {
         HWND hwndParent = GetParent(hwnd);
 
@@ -199,7 +199,7 @@ struct RubberBand : public WindowBase
 
         if (m_hwndTarget)
         {
-            FitToTarget(hwnd);
+            FitToBand(hwnd);
         }
 
         GetRect(hwnd, &rc);
