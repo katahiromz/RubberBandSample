@@ -18,8 +18,8 @@
 // Version Info
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     @PROGRAM_MAJOR@, @PROGRAM_MINOR@, @PROGRAM_BUILD@, 0
-PRODUCTVERSION  @PROGRAM_MAJOR@, @PROGRAM_MINOR@, @PROGRAM_BUILD@, 0
+FILEVERSION     0, 1, 0, 0
+PRODUCTVERSION  0, 1, 0, 0
 FILEOS          VOS_NT_WINDOWS32
 FILETYPE        VFT_APP
 BEGIN
@@ -29,11 +29,11 @@ BEGIN
         BLOCK "040904E4"
         BEGIN
             VALUE "CompanyName", "@PROGRAM_AUTHORS\0"
-            VALUE "FileDescription", "@PROGRAM_NAME@\0"
-            VALUE "FileVersion", "@VERSION_STRING@\0"
-            VALUE "LegalCopyright", "Copyright (C) @PROGRAM_YEARS@ @PROGRAM_AUTHORS@\0"
-            VALUE "ProductName", "@PROGRAM_NAME@\0"
-            VALUE "ProductVersion", "@VERSION_STRING@\0"
+            VALUE "FileDescription", "RubberBandSample\0"
+            VALUE "FileVersion", "0.1.0\0"
+            VALUE "LegalCopyright", "Copyright (C) 2015-2017 Katayama Hirofumi MZ\0"
+            VALUE "ProductName", "RubberBandSample\0"
+            VALUE "ProductVersion", "0.1.0\0"
         END
     END
     BLOCK "VarFileInfo"
@@ -82,8 +82,8 @@ CAPTION "About RubberBandSample"
 FONT 10, "MS Shell Dlg"
 BEGIN
     CONTROL 1, -1, "STATIC", SS_ICON | WS_CHILD | WS_VISIBLE, 14, 14, 21, 20
-    CONTROL "@PROGRAM_NAME@ Version @PROGRAM_MAJOR@.@PROGRAM_MINOR@.@PROGRAM_BUILD@", -1, "STATIC", SS_LEFT | SS_NOPREFIX | WS_CHILD | WS_VISIBLE, 45, 15, 150, 8
-    CONTROL "Copyright (C) @PROGRAM_YEARS@ @PROGRAM_AUTHORS@", -1, "STATIC", SS_RIGHT | WS_CHILD | WS_VISIBLE | WS_GROUP, 45, 30, 150, 16
+    CONTROL "RubberBandSample Version 0.1.0", -1, "STATIC", SS_LEFT | SS_NOPREFIX | WS_CHILD | WS_VISIBLE, 45, 15, 150, 8
+    CONTROL "Copyright (C) 2015-2017 Katayama Hirofumi MZ", -1, "STATIC", SS_RIGHT | WS_CHILD | WS_VISIBLE | WS_GROUP, 45, 30, 150, 16
     CONTROL "OK", 1, "BUTTON", BS_DEFPUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_GROUP | WS_TABSTOP, 70, 50, 50, 14
 END
 

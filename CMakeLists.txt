@@ -91,7 +91,6 @@ endif()
 
 # configuration files
 configure_file(src/config.h.in src/config.h)
-configure_file(src/RubberBandSample_res.rc.in src/RubberBandSample_res.rc)
 
 # install the program
 install(TARGETS RubberBandSample DESTINATION bin)
