@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef WINDOW_BASE_HPP_
-#define WINDOW_BASE_HPP_    2   /* Version 2 */
+#define WINDOW_BASE_HPP_    3   /* Version 3 */
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +37,33 @@
 
 struct WindowBase;
 struct DialogBase;
+
+//////////////////////////////////////////////////////////////////////////////
+// debug output
+
+inline void DebugPrintDx(const char *format, ...)
+{
+    #ifdef _DEBUG
+        char buffer[512];
+        va_list va;
+        va_start(va, format);
+        ::wvsprintfA(buffer, format, va);
+        va_end(va);
+        OutputDebugStringA(buffer);
+    #endif
+}
+
+inline void DebugPrintDx(const WCHAR *format, ...)
+{
+    #ifdef _DEBUG
+        WCHAR buffer[512];
+        va_list va;
+        va_start(va, format);
+        ::wvsprintfW(buffer, format, va);
+        va_end(va);
+        OutputDebugStringW(buffer);
+    #endif
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -117,19 +144,6 @@ struct WindowBase
             return base->WindowProcDx(hwnd, uMsg, wParam, lParam);
 
         return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-
-    // debug output
-    void DebugPrintDx(const TCHAR *format, ...) const
-    {
-        #ifdef _DEBUG
-            TCHAR buffer[512];
-            va_list va;
-            va_start(va, format);
-            ::wvsprintf(buffer, format, va);
-            va_end(va);
-            OutputDebugString(buffer);
-        #endif
     }
 
     virtual LPCTSTR GetWndClassNameDx() const
