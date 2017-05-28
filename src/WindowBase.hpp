@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef WINDOW_BASE_HPP_
-#define WINDOW_BASE_HPP_    1   /* Version 1 */
+#define WINDOW_BASE_HPP_    2   /* Version 2 */
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -10,25 +10,33 @@
     #include <windows.h>
 #endif
 #include <windowsx.h>
-
 #include <dlgs.h>
 
 #include <string>   // for std::string and std::wstring
-
-#include <cassert>
+#include <cassert>  // for assert
 
 #ifndef _countof
     #define _countof(array)     (sizeof(array) / sizeof(array[0]))
 #endif
 
+//////////////////////////////////////////////////////////////////////////////
+
+// tstring
+#ifndef tstring
+    #ifdef UNICODE
+        typedef std::wstring    tstring;
+    #else
+        typedef std::string     tstring;
+    #endif
+#endif
+
+// NOTE: Digital Mars C/C++ Compiler doesn't define INT_PTR type likely.
+#ifdef __DMC__
+    #define INT_PTR BOOL
+#endif
+
 struct WindowBase;
 struct DialogBase;
-
-#ifdef UNICODE
-    typedef std::wstring    tstring;
-#else
-    typedef std::string     tstring;
-#endif
 
 //////////////////////////////////////////////////////////////////////////////
 
