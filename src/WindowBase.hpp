@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef WINDOW_BASE_HPP_
-#define WINDOW_BASE_HPP_    5   /* Version 5 */
+#define WINDOW_BASE_HPP_    6   /* Version 6 */
 
 //////////////////////////////////////////////////////////////////////////////
 // headers
@@ -470,40 +470,82 @@ struct DialogBase : public WindowBase
 
 //////////////////////////////////////////////////////////////////////////////
 
-/*static*/ inline VOID WindowBase::CenterWindowDx(HWND hwnd)
+/*static*/ inline VOID
+WindowBase::CenterWindowDx(HWND hwnd)
 {
     BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
 
+    // get parent
     HWND hwndOwner;
-    if (bChild)
-        hwndOwner = ::GetParent(hwnd);
-    else
-        hwndOwner = ::GetWindow(hwnd, GW_OWNER);
+    hwndOwner = (bChild ? ::GetParent(hwnd) : ::GetWindow(hwnd, GW_OWNER));
 
-    RECT rc, rcOwner;
-    if (hwndOwner != NULL)
+    RECT rc, rcOwner, rcWorkArea;
+
+    // get work area
+#if (WINVER >= 0x0500)
+    MONITORINFO mi;
+    mi.cbSize = sizeof(mi);
+    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (GetMonitorInfo(hMonitor, &mi))
+    {
+        rcWorkArea = mi.rcWork;
+    }
+    else
+    {
+        ::SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, 0);
+    }
+#else
+    ::SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, 0);
+#endif
+
+    if (hwndOwner)
+    {
         ::GetWindowRect(hwndOwner, &rcOwner);
+    }
     else
-        ::SystemParametersInfo(SPI_GETWORKAREA, 0, &rcOwner, 0);
+    {
+        rcOwner = rcWorkArea;
+    }
 
-    ::GetWindowRect(hwnd, &rc);
-
+    // calculate the position
     POINT pt;
-    pt.x = rcOwner.left +
-        ((rcOwner.right - rcOwner.left) - (rc.right - rc.left)) / 2;
-    pt.y = rcOwner.top +
-        ((rcOwner.bottom - rcOwner.top) - (rc.bottom - rc.top)) / 2;
+    ::GetWindowRect(hwnd, &rc);
+    SIZE siz = { rc.right - rc.left, rc.bottom - rc.top };
+    pt.x = rcOwner.left + ((rcOwner.right - rcOwner.left) - siz.cx) / 2;
+    pt.y = rcOwner.top + ((rcOwner.bottom - rcOwner.top) - siz.cy) / 2;
 
-    if (bChild && hwndOwner != NULL)
-        ::ScreenToClient(hwndOwner, &pt);
+    // fit to work area
+    if (pt.x + siz.cx > rcWorkArea.right)
+        pt.x = rcWorkArea.right - siz.cx;
+    if (pt.y + siz.cy > rcWorkArea.bottom)
+        pt.y = rcWorkArea.bottom - siz.cy;
+    if (pt.x < rcWorkArea.left)
+        pt.x = rcWorkArea.left;
+    if (pt.y < rcWorkArea.top)
+        pt.y = rcWorkArea.top;
 
+    // fit to virtual screen
     INT xScreen = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
+    INT yScreen = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
+    INT cxScreen = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    INT cyScreen = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    if (cxScreen == 0)
+        cxScreen = ::GetSystemMetrics(SM_CXSCREEN);
+    if (cyScreen == 0)
+        cyScreen = ::GetSystemMetrics(SM_CYSCREEN);
+    if (pt.x + siz.cx > xScreen + cxScreen)
+        pt.x = (xScreen + cxScreen) - siz.cx;
+    if (pt.y + siz.cy > yScreen + cyScreen)
+        pt.y = (yScreen + cyScreen) - siz.cy;
     if (pt.x < xScreen)
         pt.x = xScreen;
-    INT yScreen = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
     if (pt.y < yScreen)
         pt.y = yScreen;
 
+    if (bChild && hwndOwner)
+        ::ScreenToClient(hwndOwner, &pt);
+
+    // move it
     ::SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOZORDER);
 }
