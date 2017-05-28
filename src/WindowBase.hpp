@@ -547,7 +547,7 @@ WindowBase::CenterWindowDx(HWND hwnd)
 
     // move it
     ::SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
-                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOZORDER);
+                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 //////////////////////////////////////////////////////////////////////////////
