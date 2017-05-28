@@ -14,6 +14,8 @@
     #define IDC_STATIC              -1
 #endif
 
+#define IDS_APPNAME     1
+
 //////////////////////////////////////////////////////////////////////////////
 // Next default values for new objects
 

@@ -95,7 +95,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 STRINGTABLE
 BEGIN
-    1,   "RubberBandSample"
+    IDS_APPNAME,   "RubberBandSample"
 END
 
 /////////////////////////////////////////////////////////////////////////////
