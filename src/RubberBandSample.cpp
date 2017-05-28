@@ -293,9 +293,9 @@ INT APIENTRY _tWinMain(
 #if (WINVER >= 0x0500)
     HANDLE hProcess = GetCurrentProcess();
     DebugPrintDx(TEXT("Count of GDI objects: %ld\n"),
-                 GetGuiResources(hProcess, GR_GDIOBJECTS);
+                 GetGuiResources(hProcess, GR_GDIOBJECTS));
     DebugPrintDx(TEXT("Count of USER objects: %ld\n"),
-                 GetGuiResources(hProcess, GR_USEROBJECTS);
+                 GetGuiResources(hProcess, GR_USEROBJECTS));
 #endif
 
 #if defined(_MSC_VER) && !defined(NDEBUG)
