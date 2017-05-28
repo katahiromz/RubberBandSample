@@ -2,24 +2,36 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef WINDOW_BASE_HPP_
-#define WINDOW_BASE_HPP_    3   /* Version 3 */
+#define WINDOW_BASE_HPP_    5   /* Version 5 */
 
 //////////////////////////////////////////////////////////////////////////////
+// headers
 
+// Win32 API headers
 #ifndef _INC_WINDOWS
-    #include <windows.h>
+    #include <windows.h>    // Win32 API
 #endif
-#include <windowsx.h>
-#include <dlgs.h>
+#ifndef _INC_WINDOWSX
+    #include <windowsx.h>   // Win32 Macro APIs
+#endif
+#ifndef _INC_COMMCTRL
+    #include <commctrl.h>   // common controls
+#endif
+#ifndef _INC_TCHAR
+    #include <tchar.h>      // generic text mappings
+#endif
+#include <dlgs.h>           // dialog control IDs
 
-#include <string>   // for std::string and std::wstring
-#include <cassert>  // for assert
+// standard C library
+#include <string>   // std::string and std::wstring
+#include <cassert>  // assert
+#include <cstring>  // C string library
+
+//////////////////////////////////////////////////////////////////////////////
 
 #ifndef _countof
     #define _countof(array)     (sizeof(array) / sizeof(array[0]))
 #endif
-
-//////////////////////////////////////////////////////////////////////////////
 
 // tstring
 #ifndef tstring
@@ -30,16 +42,22 @@
     #endif
 #endif
 
-// NOTE: Digital Mars C/C++ Compiler doesn't define INT_PTR type likely.
+// NOTE: Old Digital Mars C/C++ Compiler doesn't define INT_PTR type likely.
 #ifdef __DMC__
-    #define INT_PTR BOOL
+    #ifndef INT_PTR
+        #ifdef _WIN64
+            #define INT_PTR     LPARAM
+        #else
+            #define INT_PTR     BOOL
+        #endif
+    #endif
 #endif
 
 struct WindowBase;
 struct DialogBase;
 
 //////////////////////////////////////////////////////////////////////////////
-// debug output
+// DebugPrintDx --- debug output
 
 inline void DebugPrintDx(const char *format, ...)
 {
@@ -265,7 +283,10 @@ struct WindowBase
 #ifdef IDS_APPNAME
             Title = LoadStringDx(IDS_APPNAME);
 #else
-            Title = GetWindowTextDx();
+            if (m_hwnd)
+                Title = GetWindowTextDx();
+            else
+                Title = TEXT("ERROR");
 #endif
         }
         else
@@ -440,6 +461,11 @@ struct DialogBase : public WindowBase
             DialogBase::DialogProc, (LPARAM)this);
         return nID;
     }
+
+    virtual LPCTSTR GetWndClassNameDx() const
+    {
+        return TEXT("#32770");
+    }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -471,10 +497,15 @@ struct DialogBase : public WindowBase
     if (bChild && hwndOwner != NULL)
         ::ScreenToClient(hwndOwner, &pt);
 
-    ::SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
-                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    INT xScreen = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
+    if (pt.x < xScreen)
+        pt.x = xScreen;
+    INT yScreen = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
+    if (pt.y < yScreen)
+        pt.y = yScreen;
 
-    ::SendMessage(hwnd, DM_REPOSITION, 0, 0);
+    ::SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
+                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOZORDER);
 }
 
 //////////////////////////////////////////////////////////////////////////////
