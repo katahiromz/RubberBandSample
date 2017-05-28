@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef WINDOW_BASE_HPP_
-#define WINDOW_BASE_HPP_    0   /* Version 0 */
+#define WINDOW_BASE_HPP_    1   /* Version 1 */
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -12,6 +12,9 @@
 #include <windowsx.h>
 
 #include <dlgs.h>
+
+#include <string>   // for std::string and std::wstring
+
 #include <cassert>
 
 #ifndef _countof
@@ -21,6 +24,12 @@
 struct WindowBase;
 struct DialogBase;
 
+#ifdef UNICODE
+    typedef std::wstring    tstring;
+#else
+    typedef std::string     tstring;
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 
 struct WindowBase
@@ -29,6 +38,10 @@ struct WindowBase
     WNDPROC m_fnOldProc;
 
     WindowBase() : m_hwnd(NULL), m_fnOldProc(NULL)
+    {
+    }
+
+    virtual ~WindowBase()
     {
     }
 
@@ -50,7 +63,7 @@ struct WindowBase
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)ptr);
     }
 
-    WindowBase *GetUserData()
+    WindowBase *GetUserData() const
     {
         return GetUserData(m_hwnd);
     }
@@ -180,16 +193,14 @@ struct WindowBase
     }
 
     // WARNING: This function is not thread-safe!
-    LPTSTR LoadStringDx(UINT nID)
+    LPTSTR LoadStringDx(UINT nID) const
     {
-        static TCHAR s_sz[512];
+        static TCHAR s_sz[1024];
         s_sz[0] = 0;
         ::LoadString(::GetModuleHandle(NULL), nID, s_sz, _countof(s_sz));
         return s_sz;
     }
-
-    // WARNING: This function is not thread-safe!
-    LPTSTR LoadStringDx2(UINT nID)
+    LPTSTR LoadStringDx2(UINT nID) const
     {
         static TCHAR s_sz[1024];
         s_sz[0] = 0;
@@ -197,7 +208,15 @@ struct WindowBase
         return s_sz;
     }
 
-    LPCTSTR GetStringDx(LPCTSTR psz)
+    LPCTSTR GetStringDx(LPCTSTR psz) const
+    {
+        if (psz == NULL)
+            return NULL;
+        if (IS_INTRESOURCE(psz))
+            return LoadStringDx(LOWORD(psz));
+        return psz;
+    }
+    LPCTSTR GetStringDx2(LPCTSTR psz) const
     {
         if (psz == NULL)
             return NULL;
@@ -206,34 +225,135 @@ struct WindowBase
         return psz;
     }
 
-    LPCTSTR GetStringDx(INT nStringID)
+    LPCTSTR GetStringDx(INT nStringID) const
     {
         return GetStringDx(MAKEINTRESOURCE(nStringID));
     }
-
-    INT MsgBoxDx(LPCTSTR pszString, LPCTSTR pszTitle, UINT uType = MB_ICONINFORMATION)
+    LPCTSTR GetStringDx2(INT nStringID) const
     {
-        TCHAR Title[128] = TEXT("ERROR");
+        return GetStringDx2(MAKEINTRESOURCE(nStringID));
+    }
+
+    INT MsgBoxDx(LPCTSTR pszString, LPCTSTR pszTitle,
+                 UINT uType = MB_ICONINFORMATION)
+    {
+        tstring Title;
         if (pszTitle == NULL)
         {
-            if (GetWindowText(m_hwnd, Title, 128))
-            {
-                pszTitle = Title;
-            }
+#ifdef IDS_APPNAME
+            Title = LoadStringDx(IDS_APPNAME);
+#else
+            Title = GetWindowTextDx();
+#endif
         }
-        INT nID = ::MessageBox(m_hwnd, GetStringDx(pszString),
-                               GetStringDx(pszTitle), uType);
+        else
+        {
+            Title = GetStringDx(pszTitle);
+        }
+
+        WindowBase::_doHookCenterMsgBoxDx(TRUE);
+        INT nID = ::MessageBox(m_hwnd, GetStringDx2(pszString),
+                               Title.c_str(), uType);
+        WindowBase::_doHookCenterMsgBoxDx(FALSE);
+
         return nID;
     }
 
     INT MsgBoxDx(UINT nStringID, UINT nTitleID, UINT uType = MB_ICONINFORMATION)
     {
-        return MsgBoxDx(GetStringDx(nStringID), GetStringDx(nTitleID), uType);
+        return MsgBoxDx(MAKEINTRESOURCE(nStringID), MAKEINTRESOURCE(nTitleID), uType);
+    }
+
+    INT MsgBoxDx(UINT nStringID, LPCTSTR pszTitle, UINT uType = MB_ICONINFORMATION)
+    {
+        return MsgBoxDx(MAKEINTRESOURCE(nStringID), pszTitle, uType);
     }
 
     INT MsgBoxDx(UINT nStringID, UINT uType = MB_ICONINFORMATION)
     {
-        return MsgBoxDx(nStringID, 0, uType);
+        return MsgBoxDx(MAKEINTRESOURCE(nStringID), NULL, uType);
+    }
+
+    INT MsgBoxDx(LPCTSTR pszString, UINT uType = MB_ICONINFORMATION)
+    {
+        return MsgBoxDx(pszString, NULL, uType);
+    }
+
+    static VOID CenterWindowDx(HWND hwnd);
+    VOID CenterWindowDx() const
+    {
+        CenterWindowDx(m_hwnd);
+    }
+
+    static tstring GetWindowTextDx(HWND hwnd)
+    {
+        INT cch = ::GetWindowTextLength(hwnd);
+        tstring ret;
+        ret.resize(cch);
+        ::GetWindowText(hwnd, &ret[0], cch + 1);
+        return ret;
+    }
+    tstring GetWindowTextDx() const
+    {
+        return GetWindowTextDx(m_hwnd);
+    }
+
+    static tstring GetDlgItemTextDx(HWND hwnd, INT nCtrlID)
+    {
+        return GetWindowTextDx(::GetDlgItem(hwnd, nCtrlID));
+    }
+    tstring GetDlgItemTextDx(INT nCtrlID) const
+    {
+        return GetWindowTextDx(::GetDlgItem(m_hwnd, nCtrlID));
+    }
+
+private:
+    static inline LRESULT CALLBACK
+    _msgBoxCbtProcDx(INT nCode, WPARAM wParam, LPARAM lParam)
+    {
+#ifndef NO_CENTER_MSGBOX
+        if (nCode == HCBT_ACTIVATE)
+        {
+            HWND hwnd = (HWND)wParam;
+
+            TCHAR szClassName[16];
+            ::GetClassName(hwnd, szClassName, 16);
+            if (lstrcmpi(szClassName, TEXT("#32770")) == 0)
+            {
+                WindowBase::CenterWindowDx(hwnd);
+            }
+        }
+#endif  // ndef NO_CENTER_MSGBOX
+
+        return 0;   // allow the operation
+    }
+
+    static HHOOK _doHookCenterMsgBoxDx(BOOL bHook)
+    {
+#ifdef NO_CENTER_MSGBOX
+        return NULL;
+#else   // ndef NO_CENTER_MSGBOX
+        static HHOOK s_hHook = NULL;
+        if (bHook)
+        {
+            if (s_hHook == NULL)
+            {
+                DWORD dwThreadID = GetCurrentThreadId();
+                s_hHook = ::SetWindowsHookEx(WH_CBT, _msgBoxCbtProcDx, NULL, dwThreadID);
+            }
+        }
+        else
+        {
+            if (s_hHook)
+            {
+                if (::UnhookWindowsHookEx(s_hHook))
+                {
+                    s_hHook = NULL;
+                }
+            }
+        }
+        return s_hHook;
+#endif  // ndef NO_CENTER_MSGBOX
     }
 };
 
@@ -299,6 +419,41 @@ struct DialogBase : public WindowBase
         return nID;
     }
 };
+
+//////////////////////////////////////////////////////////////////////////////
+
+/*static*/ inline VOID WindowBase::CenterWindowDx(HWND hwnd)
+{
+    BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
+
+    HWND hwndOwner;
+    if (bChild)
+        hwndOwner = ::GetParent(hwnd);
+    else
+        hwndOwner = ::GetWindow(hwnd, GW_OWNER);
+
+    RECT rc, rcOwner;
+    if (hwndOwner != NULL)
+        ::GetWindowRect(hwndOwner, &rcOwner);
+    else
+        ::SystemParametersInfo(SPI_GETWORKAREA, 0, &rcOwner, 0);
+
+    ::GetWindowRect(hwnd, &rc);
+
+    POINT pt;
+    pt.x = rcOwner.left +
+        ((rcOwner.right - rcOwner.left) - (rc.right - rc.left)) / 2;
+    pt.y = rcOwner.top +
+        ((rcOwner.bottom - rcOwner.top) - (rc.bottom - rc.top)) / 2;
+
+    if (bChild && hwndOwner != NULL)
+        ::ScreenToClient(hwndOwner, &pt);
+
+    ::SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
+                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+    ::SendMessage(hwnd, DM_REPOSITION, 0, 0);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
