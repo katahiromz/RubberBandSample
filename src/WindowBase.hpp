@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef MZC4_WINDOW_BASE_HPP_
-#define MZC4_WINDOW_BASE_HPP_    8   /* Version 8 */
+#define MZC4_WINDOW_BASE_HPP_    9   /* Version 9 */
 
 #if _MSC_VER > 1000
     #pragma once
@@ -77,7 +77,6 @@ void MZCAPIV DebugPrintDx(const WCHAR *format, ...);
 void MZCAPI GetVirtualScreenRectDx(LPRECT prc);
 void MZCAPI RepositionPointDx(LPPOINT ppt, SIZE siz, LPCRECT prc);
 void MZCAPI WorkAreaFromWindowDx(LPRECT prcWorkArea, HWND hwnd);
-void MZCAPI CenterWindowDx(HWND hwnd);
 SIZE MZCAPI SizeFromRectDx(LPCRECT prc);
 LPTSTR MZCAPI LoadStringDx(INT nID);
 LPTSTR MZCAPI LoadStringDx2(INT nID);
@@ -288,7 +287,7 @@ struct WindowBase
 
     VOID CenterWindowDx() const
     {
-        ::CenterWindowDx(m_hwnd);
+        CenterWindowDx(m_hwnd);
     }
 
     static tstring GetWindowTextDx(HWND hwnd)
@@ -313,6 +312,59 @@ struct WindowBase
         return GetWindowTextDx(::GetDlgItem(m_hwnd, nCtrlID));
     }
 
+    static void CenterWindowDx(HWND hwnd)
+    {
+        assert(IsWindow(hwnd));
+
+        BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
+
+        // get parent
+        HWND hwndParent;
+        if (bChild)
+            hwndParent = GetParent(hwnd);
+        else
+            hwndParent = GetWindow(hwnd, GW_OWNER);
+
+        RECT rcWorkArea;
+        WorkAreaFromWindowDx(&rcWorkArea, hwnd);
+
+        RECT rcParent;
+        if (hwndParent)
+            GetWindowRect(hwndParent, &rcParent);
+        else
+            rcParent = rcWorkArea;
+
+        SIZE sizParent = SizeFromRectDx(&rcParent);
+
+        RECT rc;
+        GetWindowRect(hwnd, &rc);
+        SIZE siz = SizeFromRectDx(&rc);
+
+        POINT pt;
+        pt.x = rcParent.left + (sizParent.cx - siz.cx) / 2;
+        pt.y = rcParent.top + (sizParent.cy - siz.cy) / 2;
+
+        if (bChild && hwndParent)
+        {
+            GetClientRect(hwndParent, &rcParent);
+            MapWindowRect(hwndParent, NULL, &rcParent);
+            RepositionPointDx(&pt, siz, &rcParent);
+
+            ScreenToClient(hwndParent, &pt);
+        }
+        else
+        {
+            RepositionPointDx(&pt, siz, &rcWorkArea);
+
+            RECT rcScreen;
+            GetVirtualScreenRectDx(&rcScreen);
+            RepositionPointDx(&pt, siz, &rcScreen);
+        }
+
+        SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
+                     SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
 private:
     static inline LRESULT CALLBACK
     _msgBoxCbtProcDx(INT nCode, WPARAM wParam, LPARAM lParam)
@@ -325,7 +377,7 @@ private:
             ::GetClassName(hwnd, szClassName, _countof(szClassName));
             if (lstrcmpi(szClassName, TEXT("#32770")) == 0)
             {
-                ::CenterWindowDx(hwnd);
+                CenterWindowDx(hwnd);
             }
         }
 #endif  // ndef MZC_NO_CENTER_MSGBOX
@@ -508,59 +560,6 @@ inline void MZCAPI WorkAreaFromWindowDx(LPRECT prcWorkArea, HWND hwnd)
     }
 #endif
     ::SystemParametersInfo(SPI_GETWORKAREA, 0, prcWorkArea, 0);
-}
-
-inline void MZCAPI CenterWindowDx(HWND hwnd)
-{
-    assert(IsWindow(hwnd));
-
-    BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
-
-    // get parent
-    HWND hwndParent;
-    if (bChild)
-        hwndParent = GetParent(hwnd);
-    else
-        hwndParent = GetWindow(hwnd, GW_OWNER);
-
-    RECT rcWorkArea;
-    WorkAreaFromWindowDx(&rcWorkArea, hwnd);
-
-    RECT rcParent;
-    if (hwndParent)
-        GetWindowRect(hwndParent, &rcParent);
-    else
-        rcParent = rcWorkArea;
-
-    SIZE sizParent = SizeFromRectDx(&rcParent);
-
-    RECT rc;
-    GetWindowRect(hwnd, &rc);
-    SIZE siz = SizeFromRectDx(&rc);
-
-    POINT pt;
-    pt.x = rcParent.left + (sizParent.cx - siz.cx) / 2;
-    pt.y = rcParent.top + (sizParent.cy - siz.cy) / 2;
-
-    if (bChild && hwndParent)
-    {
-        GetClientRect(hwndParent, &rcParent);
-        MapWindowRect(hwndParent, NULL, &rcParent);
-        RepositionPointDx(&pt, siz, &rcParent);
-
-        ScreenToClient(hwndParent, &pt);
-    }
-    else
-    {
-        RepositionPointDx(&pt, siz, &rcWorkArea);
-
-        RECT rcScreen;
-        GetVirtualScreenRectDx(&rcScreen);
-        RepositionPointDx(&pt, siz, &rcScreen);
-    }
-
-    SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
-                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 inline SIZE MZCAPI SizeFromRectDx(LPCRECT prc)
