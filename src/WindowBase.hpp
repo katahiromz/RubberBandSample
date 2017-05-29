@@ -1,8 +1,12 @@
 // WindowBase.hpp --- MZC4 window base
 //////////////////////////////////////////////////////////////////////////////
 
-#ifndef WINDOW_BASE_HPP_
-#define WINDOW_BASE_HPP_    6   /* Version 6 */
+#ifndef MZC4_WINDOW_BASE_HPP_
+#define MZC4_WINDOW_BASE_HPP_    7   /* Version 7 */
+
+#if _MSC_VER > 1000
+    #pragma once
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // headers
@@ -20,9 +24,10 @@
 #ifndef _INC_TCHAR
     #include <tchar.h>      // generic text mappings
 #endif
+
 #include <dlgs.h>           // dialog control IDs
 
-// standard C library
+// standard C/C++ library
 #include <string>   // std::string and std::wstring
 #include <cassert>  // assert
 #include <cstring>  // C string library
@@ -57,31 +62,29 @@ struct WindowBase;
 struct DialogBase;
 
 //////////////////////////////////////////////////////////////////////////////
-// DebugPrintDx --- debug output
+// public functions
 
-inline void DebugPrintDx(const char *format, ...)
-{
-    #ifdef _DEBUG
-        char buffer[512];
-        va_list va;
-        va_start(va, format);
-        ::wvsprintfA(buffer, format, va);
-        va_end(va);
-        OutputDebugStringA(buffer);
-    #endif
-}
+#ifndef MZCAPI
+    #define MZCAPI      WINAPI
+#endif
 
-inline void DebugPrintDx(const WCHAR *format, ...)
-{
-    #ifdef _DEBUG
-        WCHAR buffer[512];
-        va_list va;
-        va_start(va, format);
-        ::wvsprintfW(buffer, format, va);
-        va_end(va);
-        OutputDebugStringW(buffer);
-    #endif
-}
+#ifndef MZCAPIV
+    #define MZCAPIV     WINAPIV
+#endif
+
+void MZCAPIV DebugPrintDx(const char *format, ...);
+void MZCAPIV DebugPrintDx(const WCHAR *format, ...);
+void MZCAPI GetVirtualScreenRectDx(LPRECT prc);
+void MZCAPI RepositionPointDx(LPPOINT ppt, SIZE siz, LPCRECT prc);
+void MZCAPI WorkAreaFromWindowDx(LPRECT prc, HWND hwnd);
+void MZCAPI CenterWindowDx(HWND hwnd);
+SIZE MZCAPI SizeFromRectDx(LPCRECT prc);
+LPTSTR MZCAPI LoadStringDx(INT nID);
+LPTSTR MZCAPI LoadStringDx2(INT nID);
+LPCTSTR MZCAPI GetStringDx(INT nStringID);
+LPCTSTR MZCAPI GetStringDx2(INT nStringID);
+LPCTSTR MZCAPI GetStringDx(LPCTSTR psz);
+LPCTSTR MZCAPI GetStringDx2(LPCTSTR psz);
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -127,7 +130,8 @@ struct WindowBase
         return ::CallWindowProc(m_fnOldProc, hwnd, uMsg, wParam, lParam);
     }
 
-    virtual LRESULT DefaultProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    virtual LRESULT MZCAPI
+    DefaultProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         if (m_fnOldProc)
         {
@@ -211,9 +215,10 @@ struct WindowBase
         if (!RegisterClassDx())
             return FALSE;
 
-        m_hwnd = ::CreateWindowEx(ExStyle, GetWndClassNameDx(), GetStringDx(pszText),
-                                  Style, x, y, cx, cy, hwndParent, hMenu,
-                                  GetModuleHandle(NULL), this);
+        m_hwnd = ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
+                                  GetStringDx(pszText),
+                                  Style, x, y, cx, cy, hwndParent,
+                                  hMenu, GetModuleHandle(NULL), this);
         return (m_hwnd != NULL);
     }
 
@@ -230,48 +235,6 @@ struct WindowBase
         SubclassWindow(hwnd, m_fnOldProc);
         m_fnOldProc = NULL;
         m_hwnd = NULL;
-    }
-
-    // WARNING: This function is not thread-safe!
-    LPTSTR LoadStringDx(UINT nID) const
-    {
-        static TCHAR s_sz[1024];
-        s_sz[0] = 0;
-        ::LoadString(::GetModuleHandle(NULL), nID, s_sz, _countof(s_sz));
-        return s_sz;
-    }
-    LPTSTR LoadStringDx2(UINT nID) const
-    {
-        static TCHAR s_sz[1024];
-        s_sz[0] = 0;
-        ::LoadString(::GetModuleHandle(NULL), nID, s_sz, _countof(s_sz));
-        return s_sz;
-    }
-
-    LPCTSTR GetStringDx(LPCTSTR psz) const
-    {
-        if (psz == NULL)
-            return NULL;
-        if (IS_INTRESOURCE(psz))
-            return LoadStringDx(LOWORD(psz));
-        return psz;
-    }
-    LPCTSTR GetStringDx2(LPCTSTR psz) const
-    {
-        if (psz == NULL)
-            return NULL;
-        if (IS_INTRESOURCE(psz))
-            return LoadStringDx2(LOWORD(psz));
-        return psz;
-    }
-
-    LPCTSTR GetStringDx(INT nStringID) const
-    {
-        return GetStringDx(MAKEINTRESOURCE(nStringID));
-    }
-    LPCTSTR GetStringDx2(INT nStringID) const
-    {
-        return GetStringDx2(MAKEINTRESOURCE(nStringID));
     }
 
     INT MsgBoxDx(LPCTSTR pszString, LPCTSTR pszTitle,
@@ -295,7 +258,7 @@ struct WindowBase
         }
 
         WindowBase::_doHookCenterMsgBoxDx(TRUE);
-        INT nID = ::MessageBox(m_hwnd, GetStringDx2(pszString),
+        INT nID = ::MessageBox(m_hwnd, GetStringDx(pszString),
                                Title.c_str(), uType);
         WindowBase::_doHookCenterMsgBoxDx(FALSE);
 
@@ -322,10 +285,9 @@ struct WindowBase
         return MsgBoxDx(pszString, NULL, uType);
     }
 
-    static VOID CenterWindowDx(HWND hwnd);
     VOID CenterWindowDx() const
     {
-        CenterWindowDx(m_hwnd);
+        ::CenterWindowDx(m_hwnd);
     }
 
     static tstring GetWindowTextDx(HWND hwnd)
@@ -354,28 +316,28 @@ private:
     static inline LRESULT CALLBACK
     _msgBoxCbtProcDx(INT nCode, WPARAM wParam, LPARAM lParam)
     {
-#ifndef NO_CENTER_MSGBOX
+#ifndef MZC_NO_CENTER_MSGBOX
         if (nCode == HCBT_ACTIVATE)
         {
             HWND hwnd = (HWND)wParam;
 
-            TCHAR szClassName[16];
-            ::GetClassName(hwnd, szClassName, 16);
+            TCHAR szClassName[8];
+            ::GetClassName(hwnd, szClassName, _countof(szClassName));
             if (lstrcmpi(szClassName, TEXT("#32770")) == 0)
             {
-                WindowBase::CenterWindowDx(hwnd);
+                ::CenterWindowDx(hwnd);
             }
         }
-#endif  // ndef NO_CENTER_MSGBOX
+#endif  // ndef MZC_NO_CENTER_MSGBOX
 
         return 0;   // allow the operation
     }
 
     static HHOOK _doHookCenterMsgBoxDx(BOOL bHook)
     {
-#ifdef NO_CENTER_MSGBOX
+#ifdef MZC_NO_CENTER_MSGBOX
         return NULL;
-#else   // ndef NO_CENTER_MSGBOX
+#else   // ndef MZC_NO_CENTER_MSGBOX
         static HHOOK s_hHook = NULL;
         if (bHook)
         {
@@ -396,15 +358,20 @@ private:
             }
         }
         return s_hHook;
-#endif  // ndef NO_CENTER_MSGBOX
+#endif  // ndef MZC_NO_CENTER_MSGBOX
     }
+
+#ifdef MZC_FAT_AND_RICH
+public:
+    #include "WindowBaseRich.hpp"
+#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////
 
 struct DialogBase : public WindowBase
 {
-    virtual LRESULT
+    virtual LRESULT MZCAPI
     DefaultProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         return 0;
@@ -466,21 +433,67 @@ struct DialogBase : public WindowBase
     {
         return TEXT("#32770");
     }
+
+#ifdef MZC_FAT_AND_RICH
+public:
+    #include "DialogBaseRich.hpp"
+#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////
+// public inline functions
 
-/*static*/ inline VOID
-WindowBase::CenterWindowDx(HWND hwnd)
+inline void MZCAPIV DebugPrintDx(const char *format, ...)
 {
-    BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
+    #ifdef _DEBUG
+        char buffer[512];
+        va_list va;
+        va_start(va, format);
+        ::wvsprintfA(buffer, format, va);
+        va_end(va);
+        OutputDebugStringA(buffer);
+    #endif
+}
 
-    // get parent
-    HWND hwndOwner;
-    hwndOwner = (bChild ? ::GetParent(hwnd) : ::GetWindow(hwnd, GW_OWNER));
+inline void MZCAPIV DebugPrintDx(const WCHAR *format, ...)
+{
+    #ifdef _DEBUG
+        WCHAR buffer[512];
+        va_list va;
+        va_start(va, format);
+        ::wvsprintfW(buffer, format, va);
+        va_end(va);
+        OutputDebugStringW(buffer);
+    #endif
+}
 
-    RECT rc, rcOwner, rcWorkArea;
+inline void MZCAPI GetVirtualScreenRectDx(LPRECT prc)
+{
+    INT x = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
+    INT y = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
+    INT cx = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    INT cy = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    if (cx == 0)
+        cx = ::GetSystemMetrics(SM_CXSCREEN);
+    if (cy == 0)
+        cy = ::GetSystemMetrics(SM_CYSCREEN);
+    SetRect(prc, x, y, x + cx, y + cy);
+}
 
+inline void MZCAPI RepositionPointDx(LPPOINT ppt, SIZE siz, LPCRECT prc)
+{
+    if (ppt->x + siz.cx > prc->right)
+        ppt->x = prc->right - siz.cx;
+    if (ppt->y + siz.cy > prc->bottom)
+        ppt->y = prc->bottom - siz.cy;
+    if (ppt->x < prc->left)
+        ppt->x = prc->left;
+    if (ppt->y < prc->top)
+        ppt->y = prc->top;
+}
+
+inline void MZCAPI WorkAreaFromWindowDx(LPRECT prcWorkArea, HWND hwnd)
+{
     // get work area
 #if (WINVER >= 0x0500)
     MONITORINFO mi;
@@ -488,59 +501,54 @@ WindowBase::CenterWindowDx(HWND hwnd)
     HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     if (GetMonitorInfo(hMonitor, &mi))
     {
-        rcWorkArea = mi.rcWork;
+        *prcWorkArea = mi.rcWork;
     }
     else
     {
-        ::SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, 0);
+        ::SystemParametersInfo(SPI_GETWORKAREA, 0, prcWorkArea, 0);
     }
 #else
-    ::SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, 0);
+    ::SystemParametersInfo(SPI_GETWORKAREA, 0, prcWorkArea, 0);
 #endif
+}
 
-    if (hwndOwner)
-    {
-        ::GetWindowRect(hwndOwner, &rcOwner);
-    }
+inline void MZCAPI CenterWindowDx(HWND hwnd)
+{
+    BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
+
+    // get parent
+    HWND hwndOwner;
+    if (bChild)
+        hwndOwner = ::GetParent(hwnd);
     else
-    {
+        hwndOwner = ::GetWindow(hwnd, GW_OWNER);
+
+    RECT rcWorkArea;
+    WorkAreaFromWindowDx(&rcWorkArea, hwnd);
+
+    RECT rcOwner;
+    if (hwndOwner)
+        ::GetWindowRect(hwndOwner, &rcOwner);
+    else
         rcOwner = rcWorkArea;
-    }
+    SIZE sizOwner = SizeFromRectDx(&rcOwner);
+
+    RECT rc;
+    ::GetWindowRect(hwnd, &rc);
+    SIZE siz = SizeFromRectDx(&rc);
 
     // calculate the position
     POINT pt;
-    ::GetWindowRect(hwnd, &rc);
-    SIZE siz = { rc.right - rc.left, rc.bottom - rc.top };
-    pt.x = rcOwner.left + ((rcOwner.right - rcOwner.left) - siz.cx) / 2;
-    pt.y = rcOwner.top + ((rcOwner.bottom - rcOwner.top) - siz.cy) / 2;
+    pt.x = rcOwner.left + (sizOwner.cx - siz.cx) / 2;
+    pt.y = rcOwner.top + (sizOwner.cy - siz.cy) / 2;
 
-    // fit to work area
-    if (pt.x + siz.cx > rcWorkArea.right)
-        pt.x = rcWorkArea.right - siz.cx;
-    if (pt.y + siz.cy > rcWorkArea.bottom)
-        pt.y = rcWorkArea.bottom - siz.cy;
-    if (pt.x < rcWorkArea.left)
-        pt.x = rcWorkArea.left;
-    if (pt.y < rcWorkArea.top)
-        pt.y = rcWorkArea.top;
+    // reposition to work area
+    RepositionPointDx(&pt, siz, &rcWorkArea);
 
-    // fit to virtual screen
-    INT xScreen = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
-    INT yScreen = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
-    INT cxScreen = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    INT cyScreen = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
-    if (cxScreen == 0)
-        cxScreen = ::GetSystemMetrics(SM_CXSCREEN);
-    if (cyScreen == 0)
-        cyScreen = ::GetSystemMetrics(SM_CYSCREEN);
-    if (pt.x + siz.cx > xScreen + cxScreen)
-        pt.x = (xScreen + cxScreen) - siz.cx;
-    if (pt.y + siz.cy > yScreen + cyScreen)
-        pt.y = (yScreen + cyScreen) - siz.cy;
-    if (pt.x < xScreen)
-        pt.x = xScreen;
-    if (pt.y < yScreen)
-        pt.y = yScreen;
+    // reposition to virtual screen
+    RECT rcScreen;
+    GetVirtualScreenRectDx(&rcScreen);
+    RepositionPointDx(&pt, siz, &rcScreen);
 
     if (bChild && hwndOwner)
         ::ScreenToClient(hwndOwner, &pt);
@@ -550,8 +558,71 @@ WindowBase::CenterWindowDx(HWND hwnd)
                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
+inline SIZE MZCAPI SizeFromRectDx(LPCRECT prc)
+{
+    SIZE siz = { prc->right - prc->left, prc->bottom - prc->top };
+    return siz;
+}
+
+inline LPTSTR MZCAPI LoadStringDx(INT nID)
+{
+    static TCHAR s_sz[1024];
+    s_sz[0] = 0;
+    ::LoadString(::GetModuleHandle(NULL), nID, s_sz, _countof(s_sz));
+    return s_sz;
+}
+
+inline LPTSTR MZCAPI LoadStringDx2(INT nID)
+{
+    static TCHAR s_sz[1024];
+    s_sz[0] = 0;
+    ::LoadString(::GetModuleHandle(NULL), nID, s_sz, _countof(s_sz));
+    return s_sz;
+}
+
+inline LPCTSTR MZCAPI GetStringDx(LPCTSTR psz)
+{
+    if (psz == NULL)
+        return NULL;
+    if (IS_INTRESOURCE(psz))
+        return LoadStringDx(LOWORD(psz));
+    return psz;
+}
+
+inline LPCTSTR MZCAPI GetStringDx2(LPCTSTR psz)
+{
+    if (psz == NULL)
+        return NULL;
+    if (IS_INTRESOURCE(psz))
+        return LoadStringDx2(LOWORD(psz));
+    return psz;
+}
+
+inline LPCTSTR MZCAPI GetStringDx(INT nStringID)
+{
+    return GetStringDx(MAKEINTRESOURCE(nStringID));
+}
+
+inline LPCTSTR MZCAPI GetStringDx2(INT nStringID)
+{
+    return GetStringDx2(MAKEINTRESOURCE(nStringID));
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
-#endif  // ndef WINDOW_BASE_HPP_
+#ifdef MZC_FAT_AND_RICH
+    #include "Button.hpp"
+    #include "ComboBox.hpp"
+    #include "Edit.hpp"
+    #include "ListBox.hpp"
+    #include "ScrollBar.hpp"
+    #include "Static.hpp"
+    #include "CommCtrl.hpp"
+    #include "CommDlg.hpp"
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+
+#endif  // ndef MZC4_WINDOW_BASE_HPP_
 
 //////////////////////////////////////////////////////////////////////////////
