@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef MZC4_WINDOW_BASE_HPP_
-#define MZC4_WINDOW_BASE_HPP_    7   /* Version 7 */
+#define MZC4_WINDOW_BASE_HPP_    8   /* Version 8 */
 
 #if _MSC_VER > 1000
     #pragma once
@@ -76,7 +76,7 @@ void MZCAPIV DebugPrintDx(const char *format, ...);
 void MZCAPIV DebugPrintDx(const WCHAR *format, ...);
 void MZCAPI GetVirtualScreenRectDx(LPRECT prc);
 void MZCAPI RepositionPointDx(LPPOINT ppt, SIZE siz, LPCRECT prc);
-void MZCAPI WorkAreaFromWindowDx(LPRECT prc, HWND hwnd);
+void MZCAPI WorkAreaFromWindowDx(LPRECT prcWorkArea, HWND hwnd);
 void MZCAPI CenterWindowDx(HWND hwnd);
 SIZE MZCAPI SizeFromRectDx(LPCRECT prc);
 LPTSTR MZCAPI LoadStringDx(INT nID);
@@ -155,6 +155,7 @@ struct WindowBase
             LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
             assert(pcs->lpCreateParams);
             base = (WindowBase *)pcs->lpCreateParams;
+            base->m_hwnd = hwnd;
             SetUserData(hwnd, base);
         }
         else
@@ -215,10 +216,10 @@ struct WindowBase
         if (!RegisterClassDx())
             return FALSE;
 
-        m_hwnd = ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
-                                  GetStringDx(pszText),
-                                  Style, x, y, cx, cy, hwndParent,
-                                  hMenu, GetModuleHandle(NULL), this);
+        ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
+                         GetStringDx(pszText),
+                         Style, x, y, cx, cy, hwndParent,
+                         hMenu, GetModuleHandle(NULL), this);
         return (m_hwnd != NULL);
     }
 
@@ -231,10 +232,10 @@ struct WindowBase
 
     void UnsubclassDx(HWND hwnd)
     {
+        m_hwnd = NULL;
         SetUserData(hwnd, NULL);
         SubclassWindow(hwnd, m_fnOldProc);
         m_fnOldProc = NULL;
-        m_hwnd = NULL;
     }
 
     INT MsgBoxDx(LPCTSTR pszString, LPCTSTR pszTitle,
@@ -320,7 +321,6 @@ private:
         if (nCode == HCBT_ACTIVATE)
         {
             HWND hwnd = (HWND)wParam;
-
             TCHAR szClassName[8];
             ::GetClassName(hwnd, szClassName, _countof(szClassName));
             if (lstrcmpi(szClassName, TEXT("#32770")) == 0)
@@ -391,6 +391,7 @@ struct DialogBase : public WindowBase
         {
             assert(lParam);
             base = (DialogBase *)lParam;
+            base->m_hwnd = hwnd;
             SetUserData(hwnd, base);
         }
         else
@@ -399,7 +400,9 @@ struct DialogBase : public WindowBase
         }
 
         if (base)
+        {
             return base->DialogProcDx(hwnd, uMsg, wParam, lParam);
+        }
 
         return 0;
     }
@@ -415,7 +418,7 @@ struct DialogBase : public WindowBase
 
     BOOL CreateDialogDx(HWND hwndParent, INT nDialogID)
     {
-        m_hwnd = ::CreateDialogParam(::GetModuleHandle(NULL),
+        ::CreateDialogParam(::GetModuleHandle(NULL),
             MAKEINTRESOURCE(nDialogID), hwndParent, DialogBase::DialogProc,
             (LPARAM)this);
         return (m_hwnd != NULL);
@@ -494,7 +497,6 @@ inline void MZCAPI RepositionPointDx(LPPOINT ppt, SIZE siz, LPCRECT prc)
 
 inline void MZCAPI WorkAreaFromWindowDx(LPRECT prcWorkArea, HWND hwnd)
 {
-    // get work area
 #if (WINVER >= 0x0500)
     MONITORINFO mi;
     mi.cbSize = sizeof(mi);
@@ -502,60 +504,63 @@ inline void MZCAPI WorkAreaFromWindowDx(LPRECT prcWorkArea, HWND hwnd)
     if (GetMonitorInfo(hMonitor, &mi))
     {
         *prcWorkArea = mi.rcWork;
+        return;
     }
-    else
-    {
-        ::SystemParametersInfo(SPI_GETWORKAREA, 0, prcWorkArea, 0);
-    }
-#else
-    ::SystemParametersInfo(SPI_GETWORKAREA, 0, prcWorkArea, 0);
 #endif
+    ::SystemParametersInfo(SPI_GETWORKAREA, 0, prcWorkArea, 0);
 }
 
 inline void MZCAPI CenterWindowDx(HWND hwnd)
 {
+    assert(IsWindow(hwnd));
+
     BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
 
     // get parent
-    HWND hwndOwner;
+    HWND hwndParent;
     if (bChild)
-        hwndOwner = ::GetParent(hwnd);
+        hwndParent = GetParent(hwnd);
     else
-        hwndOwner = ::GetWindow(hwnd, GW_OWNER);
+        hwndParent = GetWindow(hwnd, GW_OWNER);
 
     RECT rcWorkArea;
     WorkAreaFromWindowDx(&rcWorkArea, hwnd);
 
-    RECT rcOwner;
-    if (hwndOwner)
-        ::GetWindowRect(hwndOwner, &rcOwner);
+    RECT rcParent;
+    if (hwndParent)
+        GetWindowRect(hwndParent, &rcParent);
     else
-        rcOwner = rcWorkArea;
-    SIZE sizOwner = SizeFromRectDx(&rcOwner);
+        rcParent = rcWorkArea;
+
+    SIZE sizParent = SizeFromRectDx(&rcParent);
 
     RECT rc;
-    ::GetWindowRect(hwnd, &rc);
+    GetWindowRect(hwnd, &rc);
     SIZE siz = SizeFromRectDx(&rc);
 
-    // calculate the position
     POINT pt;
-    pt.x = rcOwner.left + (sizOwner.cx - siz.cx) / 2;
-    pt.y = rcOwner.top + (sizOwner.cy - siz.cy) / 2;
+    pt.x = rcParent.left + (sizParent.cx - siz.cx) / 2;
+    pt.y = rcParent.top + (sizParent.cy - siz.cy) / 2;
 
-    // reposition to work area
-    RepositionPointDx(&pt, siz, &rcWorkArea);
+    if (bChild && hwndParent)
+    {
+        GetClientRect(hwndParent, &rcParent);
+        MapWindowRect(hwndParent, NULL, &rcParent);
+        RepositionPointDx(&pt, siz, &rcParent);
 
-    // reposition to virtual screen
-    RECT rcScreen;
-    GetVirtualScreenRectDx(&rcScreen);
-    RepositionPointDx(&pt, siz, &rcScreen);
+        ScreenToClient(hwndParent, &pt);
+    }
+    else
+    {
+        RepositionPointDx(&pt, siz, &rcWorkArea);
 
-    if (bChild && hwndOwner)
-        ::ScreenToClient(hwndOwner, &pt);
+        RECT rcScreen;
+        GetVirtualScreenRectDx(&rcScreen);
+        RepositionPointDx(&pt, siz, &rcScreen);
+    }
 
-    // move it
-    ::SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
-                   SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 inline SIZE MZCAPI SizeFromRectDx(LPCRECT prc)
