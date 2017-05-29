@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef MZC4_WINDOW_BASE_HPP_
-#define MZC4_WINDOW_BASE_HPP_    11   /* Version 11 */
+#define MZC4_WINDOW_BASE_HPP_    12   /* Version 12 */
 
 #if _MSC_VER > 1000
     #pragma once
@@ -154,8 +154,6 @@ struct WindowBase
             LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
             assert(pcs->lpCreateParams);
             base = (WindowBase *)pcs->lpCreateParams;
-            base->m_hwnd = hwnd;
-            SetUserData(hwnd, base);
         }
         else
         {
@@ -227,11 +225,15 @@ struct WindowBase
         if (!RegisterClassDx())
             return FALSE;
 
-        ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
-                         GetStringDx(pszText),
-                         Style, x, y, cx, cy, hwndParent,
-                         hMenu, GetModuleHandle(NULL), this);
-        return (m_hwnd != NULL);
+        HWND hwnd = ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
+            GetStringDx(pszText), Style, x, y, cx, cy, hwndParent,
+            hMenu, GetModuleHandle(NULL), this);
+        if (hwnd)
+        {
+            m_hwnd = hwnd;
+            SetUserData(hwnd, this);
+        }
+        return (hwnd != NULL);
     }
 
     void SubclassDx(HWND hwnd)
@@ -272,6 +274,7 @@ struct WindowBase
         WindowBase::_doHookCenterMsgBoxDx(TRUE);
         INT nID = ::MessageBox(m_hwnd, GetStringDx(pszString),
                                Title.c_str(), uType);
+        DWORD err = GetLastError();
         WindowBase::_doHookCenterMsgBoxDx(FALSE);
 
         return nID;
@@ -330,7 +333,6 @@ struct WindowBase
 
         BOOL bChild = !!(GetWindowStyle(hwnd) & WS_CHILD);
 
-        // get parent
         HWND hwndParent;
         if (bChild)
             hwndParent = GetParent(hwnd);
@@ -367,12 +369,6 @@ struct WindowBase
         else
         {
             RepositionPointDx(&pt, siz, &rcWorkArea);
-
-            #if 0
-                RECT rcScreen;
-                GetVirtualScreenRectDx(&rcScreen);
-                RepositionPointDx(&pt, siz, &rcScreen);
-            #endif
         }
 
         SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
@@ -387,7 +383,7 @@ private:
         if (nCode == HCBT_ACTIVATE)
         {
             HWND hwnd = (HWND)wParam;
-            TCHAR szClassName[8];
+            TCHAR szClassName[16];
             ::GetClassName(hwnd, szClassName, _countof(szClassName));
             if (lstrcmpi(szClassName, TEXT("#32770")) == 0)
             {
@@ -437,6 +433,12 @@ public:
 
 struct DialogBase : public WindowBase
 {
+    BOOL m_bModal;
+
+    DialogBase() : m_bModal(FALSE)
+    {
+    }
+
     virtual LRESULT MZCAPI
     DefaultProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
@@ -457,8 +459,11 @@ struct DialogBase : public WindowBase
         {
             assert(lParam);
             base = (DialogBase *)lParam;
-            base->m_hwnd = hwnd;
-            SetUserData(hwnd, base);
+            if (base->m_bModal)
+            {
+                base->m_hwnd = hwnd;
+                SetUserData(hwnd, base);
+            }
         }
         else
         {
@@ -489,14 +494,21 @@ struct DialogBase : public WindowBase
 
     BOOL CreateDialogDx(HWND hwndParent, INT nDialogID)
     {
-        ::CreateDialogParam(::GetModuleHandle(NULL),
+        m_bModal = FALSE;
+        HWND hwnd = ::CreateDialogParam(::GetModuleHandle(NULL),
             MAKEINTRESOURCE(nDialogID), hwndParent, DialogBase::DialogProc,
             (LPARAM)this);
-        return (m_hwnd != NULL);
+        if (hwnd)
+        {
+            m_hwnd = hwnd;
+            SetUserData(hwnd, this);
+        }
+        return (hwnd != NULL);
     }
 
     INT_PTR DialogBoxDx(HWND hwndParent, INT nDialogID)
     {
+        m_bModal = TRUE;
         INT_PTR nID = ::DialogBoxParam(::GetModuleHandle(NULL),
             MAKEINTRESOURCE(nDialogID), hwndParent,
             DialogBase::DialogProc, (LPARAM)this);
@@ -543,6 +555,12 @@ inline void MZCAPIV DebugPrintDx(const WCHAR *format, ...)
 
 inline void MZCAPI GetVirtualScreenRectDx(LPRECT prc)
 {
+#ifndef SM_XVIRTUALSCREEN
+    #define SM_XVIRTUALSCREEN   76
+    #define SM_YVIRTUALSCREEN   77
+    #define SM_CXVIRTUALSCREEN  78
+    #define SM_CYVIRTUALSCREEN  79
+#endif
     INT x = ::GetSystemMetrics(SM_XVIRTUALSCREEN);
     INT y = ::GetSystemMetrics(SM_YVIRTUALSCREEN);
     INT cx = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
@@ -623,12 +641,12 @@ inline LPCTSTR MZCAPI GetStringDx2(LPCTSTR psz)
 
 inline LPCTSTR MZCAPI GetStringDx(INT nStringID)
 {
-    return GetStringDx(MAKEINTRESOURCE(nStringID));
+    return LoadStringDx(nStringID);
 }
 
 inline LPCTSTR MZCAPI GetStringDx2(INT nStringID)
 {
-    return GetStringDx2(MAKEINTRESOURCE(nStringID));
+    return LoadStringDx2(nStringID);
 }
 
 //////////////////////////////////////////////////////////////////////////////
