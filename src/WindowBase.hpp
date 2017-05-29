@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef MZC4_WINDOW_BASE_HPP_
-#define MZC4_WINDOW_BASE_HPP_    9   /* Version 9 */
+#define MZC4_WINDOW_BASE_HPP_    11   /* Version 11 */
 
 #if _MSC_VER > 1000
     #pragma once
@@ -162,10 +162,22 @@ struct WindowBase
             base = GetUserData(hwnd);
         }
 
+        LRESULT ret = 0;
         if (base)
-            return base->WindowProcDx(hwnd, uMsg, wParam, lParam);
+        {
+            ret = base->WindowProcDx(hwnd, uMsg, wParam, lParam);
 
-        return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
+            if (uMsg == WM_NCDESTROY)
+            {
+                base->m_hwnd = NULL;
+            }
+        }
+        else
+        {
+            ret = ::DefWindowProc(hwnd, uMsg, wParam, lParam);
+        }
+
+        return ret;
     }
 
     virtual LPCTSTR GetWndClassNameDx() const
@@ -453,12 +465,17 @@ struct DialogBase : public WindowBase
             base = GetUserData(hwnd);
         }
 
+        INT_PTR ret = 0;
         if (base)
         {
-            return base->DialogProcDx(hwnd, uMsg, wParam, lParam);
+            ret = base->DialogProcDx(hwnd, uMsg, wParam, lParam);
+            if (uMsg == WM_NCDESTROY)
+            {
+                base->m_hwnd = NULL;
+            }
         }
 
-        return 0;
+        return ret;
     }
 
     static DialogBase *GetUserData(HWND hwnd)
