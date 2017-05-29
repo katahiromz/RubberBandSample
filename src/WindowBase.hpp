@@ -356,9 +356,11 @@ struct WindowBase
         {
             RepositionPointDx(&pt, siz, &rcWorkArea);
 
-            RECT rcScreen;
-            GetVirtualScreenRectDx(&rcScreen);
-            RepositionPointDx(&pt, siz, &rcScreen);
+            #if 0
+                RECT rcScreen;
+                GetVirtualScreenRectDx(&rcScreen);
+                RepositionPointDx(&pt, siz, &rcScreen);
+            #endif
         }
 
         SetWindowPos(hwnd, NULL, pt.x, pt.y, 0, 0,
