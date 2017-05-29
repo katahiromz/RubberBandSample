@@ -5,12 +5,6 @@
 
 //////////////////////////////////////////////////////////////////////////////
 
-// the class name of the main window
-static const TCHAR  s_szClassName[] = TEXT(VERSION_INFO_STRING);
-static const TCHAR  s_szRubberBandClass[] = TEXT("katahiromz's Rubber Band Class");
-
-//////////////////////////////////////////////////////////////////////////////
-
 // the Win32 application
 struct WinApp : public WindowBase
 {
