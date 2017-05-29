@@ -93,19 +93,21 @@ struct WinApp : public WindowBase
         m_hwnd = hwnd;
         ::DragAcceptFiles(m_hwnd, TRUE);
 
+        if (!m_rubber_band.CreateDx(hwnd, TRUE))
+        {
+            return FALSE;
+        }
+
         m_rubber_band.m_hwndTarget = ::CreateWindow(
             TEXT("BUTTON"), TEXT("Test Me!"),
             BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE,
             50, 50, 150, 150, hwnd, NULL, m_hInst, NULL);
         if (m_rubber_band.m_hwndTarget == NULL)
-            return FALSE;
-
-        if (!m_rubber_band.CreateWindowDx(hwnd, NULL,
-            WS_CHILD | WS_VISIBLE | WS_THICKFRAME, WS_EX_TOOLWINDOW,
-            50, 50, 150, 150))
         {
             return FALSE;
         }
+
+        m_rubber_band.FitToTarget();
 
         return TRUE;
     }
