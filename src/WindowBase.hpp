@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef MZC4_WINDOW_BASE_HPP_
-#define MZC4_WINDOW_BASE_HPP_    12   /* Version 12 */
+#define MZC4_WINDOW_BASE_HPP_    13   /* Version 13 */
 
 #if _MSC_VER > 1000
     #pragma once
@@ -154,6 +154,7 @@ struct WindowBase
             LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
             assert(pcs->lpCreateParams);
             base = (WindowBase *)pcs->lpCreateParams;
+            base->m_hwnd = hwnd;
         }
         else
         {
@@ -189,9 +190,6 @@ struct WindowBase
 
     BOOL RegisterClassDx()
     {
-        if (m_hwnd)
-            return ::GetClassWord(m_hwnd, GCW_ATOM);
-
         HMODULE hMod = ::GetModuleHandle(NULL);
 
         WNDCLASSEX wcx;
@@ -225,15 +223,14 @@ struct WindowBase
         if (!RegisterClassDx())
             return FALSE;
 
-        HWND hwnd = ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
+        m_hwnd = ::CreateWindowEx(ExStyle, GetWndClassNameDx(),
             GetStringDx(pszText), Style, x, y, cx, cy, hwndParent,
             hMenu, GetModuleHandle(NULL), this);
-        if (hwnd)
+        if (m_hwnd)
         {
-            m_hwnd = hwnd;
-            SetUserData(hwnd, this);
+            SetUserData(m_hwnd, this);
         }
-        return (hwnd != NULL);
+        return (m_hwnd != NULL);
     }
 
     void SubclassDx(HWND hwnd)
@@ -459,9 +456,9 @@ struct DialogBase : public WindowBase
         {
             assert(lParam);
             base = (DialogBase *)lParam;
+            base->m_hwnd = hwnd;
             if (base->m_bModal)
             {
-                base->m_hwnd = hwnd;
                 SetUserData(hwnd, base);
             }
         }
@@ -495,15 +492,14 @@ struct DialogBase : public WindowBase
     BOOL CreateDialogDx(HWND hwndParent, INT nDialogID)
     {
         m_bModal = FALSE;
-        HWND hwnd = ::CreateDialogParam(::GetModuleHandle(NULL),
+        m_hwnd = ::CreateDialogParam(::GetModuleHandle(NULL),
             MAKEINTRESOURCE(nDialogID), hwndParent, DialogBase::DialogProc,
             (LPARAM)this);
-        if (hwnd)
+        if (m_hwnd)
         {
-            m_hwnd = hwnd;
-            SetUserData(hwnd, this);
+            SetUserData(m_hwnd, this);
         }
-        return (hwnd != NULL);
+        return (m_hwnd != NULL);
     }
 
     INT_PTR DialogBoxDx(HWND hwndParent, INT nDialogID)
