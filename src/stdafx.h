@@ -42,7 +42,7 @@
 
 #include "config.h"
 #include "resource.h"
-#include "RubberBandSample.h"
+#include "RubberBandSample.hpp"
 
 //////////////////////////////////////////////////////////////////////////////
 

@@ -9,8 +9,7 @@
 // resource IDs
 #include "resource.h"
 
-#include "WindowBase.hpp"
-#include "RubberBand.hpp"
+#include "MRubberBand.hpp"
 
 //////////////////////////////////////////////////////////////////////////////
 

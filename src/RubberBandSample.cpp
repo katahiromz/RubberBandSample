@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 // the Win32 application
-struct WinApp : public WindowBase
+struct MWinApp : public MWindowBase
 {
     INT         m_argc;         // number of command line parameters
     TCHAR **    m_targv;        // command line parameters
@@ -15,10 +15,10 @@ struct WinApp : public WindowBase
     HICON       m_hIcon;        // the icon handle
     HACCEL      m_hAccel;       // the accelerator handle
 
-    RubberBand  m_rubber_band;
+    MRubberBand m_rubber_band;
 
     // constructors
-    WinApp(int argc, TCHAR **targv) :
+    MWinApp(int argc, TCHAR **targv) :
         m_argc(argc),
         m_targv(targv),
         m_hInst(::GetModuleHandleA(NULL)),
@@ -27,7 +27,7 @@ struct WinApp : public WindowBase
     {
     }
 
-    WinApp(int argc, TCHAR **targv, HINSTANCE hInst) :
+    MWinApp(int argc, TCHAR **targv, HINSTANCE hInst) :
         m_argc(argc),
         m_targv(targv),
         m_hInst(hInst),
@@ -36,12 +36,9 @@ struct WinApp : public WindowBase
     {
     }
 
-    // register window classes
-    BOOL RegisterClassesDx();
-
     virtual void ModifyWndClassDx(WNDCLASSEX& wcx)
     {
-        WindowBase::ModifyWndClassDx(wcx);
+        MWindowBase::ModifyWndClassDx(wcx);
         wcx.lpszMenuName = MAKEINTRESOURCE(1);
     }
 
@@ -199,11 +196,11 @@ struct WinApp : public WindowBase
         }
         return 0;
     }
-}; // WinApp
+}; // MWinApp
 
 //////////////////////////////////////////////////////////////////////////////
 
-struct AboutDialog : public DialogBase
+struct MAboutDialog : public MDialogBase
 {
     virtual INT_PTR CALLBACK
     DialogProcDx(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -237,21 +234,10 @@ struct AboutDialog : public DialogBase
     }
 };
 
-void WinApp::OnAbout()
+void MWinApp::OnAbout()
 {
-    AboutDialog about;
+    MAboutDialog about;
     about.DialogBoxDx(m_hwnd, IDD_ABOUTBOX);
-}
-
-BOOL WinApp::RegisterClassesDx()
-{
-    if (RegisterClassDx() &&
-        m_rubber_band.RegisterClassDx())
-    {
-        return TRUE;
-    }
-    MsgBoxDx(TEXT("RegisterClass failed."), NULL, MB_ICONERROR);
-    return TRUE;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -267,22 +253,15 @@ INT APIENTRY _tWinMain(
     int ret;
 
     {
-        WinApp app(__argc, __targv, hInstance);
+        MWinApp app(__argc, __targv, hInstance);
 
-        if (app.RegisterClassesDx())
+        if (app.StartDx(nCmdShow))
         {
-            if (app.StartDx(nCmdShow))
-            {
-                ret = INT(app.RunDx());
-            }
-            else
-            {
-                ret = 2;
-            }
+            ret = INT(app.RunDx());
         }
         else
         {
-            ret = 1;
+            ret = 2;
         }
     }
 

@@ -1,20 +1,20 @@
-// RubberBand.hpp -- Rubber Band for Win32
+// MRubberBand.hpp -- Rubber Band for Win32
 //////////////////////////////////////////////////////////////////////////////
 
-#ifndef RUBBER_BAND_HPP_
-#define RUBBER_BAND_HPP_
+#ifndef MZC4_RUBBER_BAND_HPP_
+#define MZC4_RUBBER_BAND_HPP_
 
-#include "WindowBase.hpp"
+#include "MWindowBase.hpp"
 
 //////////////////////////////////////////////////////////////////////////////
 
-struct RubberBand : public WindowBase
+struct MRubberBand : public MWindowBase
 {
     HRGN m_hRgn;
     HWND m_hwndTarget;
     enum { m_nGripSize = 3 };
 
-    RubberBand() : m_hRgn(NULL), m_hwndTarget(NULL)
+    MRubberBand() : m_hRgn(NULL), m_hwndTarget(NULL)
     {
     }
 
@@ -23,7 +23,8 @@ struct RubberBand : public WindowBase
     {
         return CreateWindowDx(hwndParent, NULL,
             (bVisible ? WS_VISIBLE : 0) | WS_CHILD | WS_THICKFRAME,
-            WS_EX_TOOLWINDOW, x, y, cx, cy);
+            WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT | WS_EX_TOPMOST,
+            x, y, cx, cy);
     }
 
     virtual LRESULT CALLBACK
@@ -268,7 +269,7 @@ struct RubberBand : public WindowBase
 
     virtual void ModifyWndClassDx(WNDCLASSEX& wcx)
     {
-        WindowBase::ModifyWndClassDx(wcx);
+        MWindowBase::ModifyWndClassDx(wcx);
         wcx.hIcon = NULL;
         wcx.hbrBackground = GetStockBrush(NULL_BRUSH);
         wcx.lpszMenuName = MAKEINTRESOURCE(1);
@@ -283,6 +284,6 @@ struct RubberBand : public WindowBase
 
 //////////////////////////////////////////////////////////////////////////////
 
-#endif  // ndef RUBBER_BAND_HPP_
+#endif  // ndef MZC4_RUBBER_BAND_HPP_
 
 //////////////////////////////////////////////////////////////////////////////
