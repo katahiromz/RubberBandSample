@@ -150,11 +150,6 @@ struct MWinApp : public MWindowBase
     // WM_SIZE
     void OnSize(HWND hwnd, UINT state, int cx, int cy)
     {
-        // NOTE: m_hwnd can be NULL at here. Needs check.
-        if (m_hwnd == NULL)
-        {
-            return;
-        }
         ::InvalidateRect(m_hwnd, NULL, TRUE);
     }
 
