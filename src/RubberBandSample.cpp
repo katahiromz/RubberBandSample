@@ -17,16 +17,6 @@ struct MWinApp : public MWindowBase
 
     MRubberBand m_rubber_band;
 
-    // constructors
-    MWinApp(int argc, TCHAR **targv) :
-        m_argc(argc),
-        m_targv(targv),
-        m_hInst(::GetModuleHandleA(NULL)),
-        m_hIcon(NULL),
-        m_hAccel(NULL)
-    {
-    }
-
     MWinApp(int argc, TCHAR **targv, HINSTANCE hInst) :
         m_argc(argc),
         m_targv(targv),
@@ -103,19 +93,6 @@ struct MWinApp : public MWindowBase
         return TRUE;
     }
 
-    // WM_DROPFILES
-    void OnDropFiles(HWND hwnd, HDROP hdrop)
-    {
-        TCHAR szPath[MAX_PATH];
-        UINT cFiles = ::DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
-        for (UINT i = 0; i < cFiles; ++i)
-        {
-            ::DragQueryFile(hdrop, i, szPath, MAX_PATH);
-            ::MessageBox(m_hwnd, szPath, TEXT("File"), MB_ICONINFORMATION);
-        }
-        ::DragFinish(hdrop);
-    }
-
     // WM_DESTROY
     void OnDestroy(HWND hwnd)
     {
@@ -147,12 +124,6 @@ struct MWinApp : public MWindowBase
         }
     }
 
-    // WM_SIZE
-    void OnSize(HWND hwnd, UINT state, int cx, int cy)
-    {
-        ::InvalidateRect(m_hwnd, NULL, TRUE);
-    }
-
     // IDM_EXIT
     void OnExit()
     {
@@ -182,9 +153,7 @@ struct MWinApp : public MWindowBase
         {
             HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
             HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
-            HANDLE_MSG(hwnd, WM_SIZE, OnSize);
             HANDLE_MSG(hwnd, WM_PAINT, OnPaint);
-            HANDLE_MSG(hwnd, WM_DROPFILES, OnDropFiles);
             HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
         default:
             return DefaultProcDx(hwnd, uMsg, wParam, lParam);
