@@ -4,12 +4,15 @@
 #ifndef MZC4_RUBBER_BAND_HPP_
 #define MZC4_RUBBER_BAND_HPP_
 
-#include "MWindowBase.hpp"
+class MRubberBand;
 
 //////////////////////////////////////////////////////////////////////////////
 
-struct MRubberBand : public MWindowBase
+#include "MWindowBase.hpp"
+
+class MRubberBand : public MWindowBase
 {
+public:
     HRGN m_hRgn;
     HWND m_hwndTarget;
     enum { m_nGripSize = 3 };
@@ -269,10 +272,8 @@ struct MRubberBand : public MWindowBase
 
     virtual void ModifyWndClassDx(WNDCLASSEX& wcx)
     {
-        MWindowBase::ModifyWndClassDx(wcx);
         wcx.hIcon = NULL;
         wcx.hbrBackground = GetStockBrush(NULL_BRUSH);
-        wcx.lpszMenuName = MAKEINTRESOURCE(1);
         wcx.hIconSm = NULL;
     }
 

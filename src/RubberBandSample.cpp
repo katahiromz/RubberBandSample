@@ -28,7 +28,6 @@ struct MWinApp : public MWindowBase
 
     virtual void ModifyWndClassDx(WNDCLASSEX& wcx)
     {
-        MWindowBase::ModifyWndClassDx(wcx);
         wcx.lpszMenuName = MAKEINTRESOURCE(1);
     }
 
